@@ -1,9 +1,10 @@
 //! String decomposer -- clone
 //! # Example
 //! ```rust
+//! # use string_decomposer::*;
 //! let seq = b"TTTACTACTACTGCGCGCTTT";
-//! let units = vec![b"ACT", b"GC"];
-//! let param = StrindDecompParameters::new(1,-1,-1,-1);
+//! let units = vec![b"ACT".as_slice(), b"GC".as_slice()];
+//! let param = StringDecompParameters::new(1,-1,-1,-1);
 //! let decomposed = DecomposedSeq::new(seq, &units, &param);
 //! ```
 //! # Reference
@@ -13,7 +14,52 @@
 //!
 
 #[derive(Debug, Clone)]
-pub struct DecomposedSeq {}
+pub struct DecomposedSeq {
+    begin: usize,
+    end: usize,
+    score: i64,
+    encodings: Vec<Encoding>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Encoding {
+    unit_id: usize,
+    ops: Vec<Op>,
+}
+
+impl Encoding {
+    /// Return the index of the unit.
+    pub fn id(&self) -> usize {
+        self.unit_id
+    }
+    /// Return the operations.
+    pub fn ops(&self) -> &[Op] {
+        &self.ops
+    }
+}
+
+#[derive(Clone)]
+pub enum Op {
+    /// Insertion to the unit.
+    Ins(u8),
+    /// Deletion from the unit.
+    Del(u8),
+    /// Mismatch between the read and the unit. `(read_base, unit_base)`
+    Match(u8, u8),
+}
+
+impl std::fmt::Debug for Op {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            Self::Ins(arg0) => write!(f, "I({})", arg0 as char),
+            Self::Del(arg0) => write!(f, "D({})", arg0 as char),
+            Self::Match(arg0, arg1) if arg0 != arg1 => {
+                write!(f, "X({}{})", arg0 as char, arg1 as char)
+            }
+            Self::Match(arg0, arg1) => write!(f, "=({}{})", arg0 as char, arg1 as char),
+        }
+    }
+}
 
 pub struct StringDecompParameters {
     match_score: i64,
@@ -35,14 +81,81 @@ impl StringDecompParameters {
     }
 }
 impl DecomposedSeq {
+    /// Return the 0-based index of the alignment region.
+    /// For example, if the returned value if `(s,e)`, `&read[s..e]` is the region to be aligned.
+    pub fn location(&self) -> (usize, usize) {
+        (self.begin, self.end)
+    }
+    /// Return the encoding by the String decomposer algorithm.
+    pub fn encoding(&self) -> &[Encoding] {
+        &self.encodings
+    }
+    pub fn score(&self) -> i64 {
+        self.score
+    }
+    /// The string decomposer algrithm.
     pub fn new<U: std::borrow::Borrow<[u8]>>(
         seq: &[u8],
         units: &[U],
         param: &StringDecompParameters,
     ) -> Self {
-        string_decomposer(seq, units, param);
-        todo!()
+        let (score, path) = string_decomposer(seq, units, param);
+        let begin = path.first().map(|x| x.0).unwrap_or(0);
+        let end = path.last().map(|x| x.0).unwrap_or(seq.len());
+        let encodings = split_into_encoding(seq, units, &path);
+        Self {
+            begin,
+            end,
+            score,
+            encodings,
+        }
     }
+}
+
+fn split_into_encoding<U: std::borrow::Borrow<[u8]>>(
+    seq: &[u8],
+    units: &[U],
+    path: &[(usize, usize, usize)],
+) -> Vec<Encoding> {
+    let units: Vec<_> = units.iter().map(|u| u.borrow()).collect();
+    let mut encodings = vec![];
+    let mut buffer = vec![];
+    let (mut r_pos, mut u_id, mut u_pos) = match path.first() {
+        Some(res) => *res,
+        None => return vec![],
+    };
+    for &(c_r_pos, c_u_id, c_u_pos) in path.iter().skip(1) {
+        // Check if we entered the next iteration...
+        if c_u_pos == 0 && u_pos != 0 {
+            let enc = Encoding {
+                unit_id: u_id,
+                ops: buffer.clone(),
+            };
+            encodings.push(enc);
+            buffer.clear();
+            u_pos = 0;
+            continue;
+        }
+        // Determine the operation.
+        let op = match (c_r_pos - r_pos, c_u_pos - u_pos) {
+            (1, 1) => Op::Match(seq[c_r_pos - 1], units[c_u_id][c_u_pos - 1]),
+            (0, 1) => Op::Del(units[c_u_id][c_u_pos - 1]),
+            (1, 0) => Op::Ins(seq[c_r_pos - 1]),
+            _ => panic!("{},{},{},{}", c_r_pos, r_pos, c_u_pos, u_pos),
+        };
+        buffer.push(op);
+        u_id = c_u_id;
+        r_pos = c_r_pos;
+        u_pos = c_u_pos;
+    }
+    if !buffer.is_empty() {
+        let enc = Encoding {
+            unit_id: u_id,
+            ops: buffer,
+        };
+        encodings.push(enc);
+    }
+    encodings
 }
 
 // The first element, each "row" of the DP-table
@@ -135,7 +248,7 @@ fn string_decomposer<U: std::borrow::Borrow<[u8]>>(
     let opt_score = score;
     while !(score == 0 && u_pos == 0) {
         // eprintln!("{r_pos},{u_id},{u_pos}");
-        alnpath.push((r_pos - 1, u_id, u_pos - 1));
+        alnpath.push((r_pos, u_id, u_pos));
         let u_base = units[u_id][u_pos - 1];
         let r_base = seq[r_pos - 1];
         let mat_score = if u_base == r_base {
@@ -159,12 +272,15 @@ fn string_decomposer<U: std::borrow::Borrow<[u8]>>(
         score = dp_table.get(r_pos, u_id, u_pos);
         // If reached the start of the unit, wrap around.
         if u_pos == 0 && r_pos != 0 && score != 0 {
+            alnpath.push((r_pos, u_id, u_pos));
             let (prev_max, next_u_id, next_u_pos) = dp_table.last_max_of(r_pos);
             assert_eq!(prev_max, score);
             u_id = next_u_id;
             u_pos = next_u_pos;
         }
     }
+    assert_eq!(u_pos, 0);
+    alnpath.push((r_pos, u_id, u_pos));
     alnpath.reverse();
     (opt_score, alnpath)
 }
@@ -183,12 +299,15 @@ mod tests {
             (0, 0, 0),
             (1, 0, 1),
             (2, 0, 2),
+            (3, 0, 3),
             (3, 0, 0),
             (4, 0, 1),
             (5, 0, 2),
+            (6, 0, 3),
             (6, 0, 0),
             (7, 0, 1),
             (8, 0, 2),
+            (9, 0, 3),
         ];
         assert_eq!(ops, path);
     }
@@ -202,12 +321,15 @@ mod tests {
             (3, 0, 0),
             (4, 0, 1),
             (5, 0, 2),
+            (6, 0, 3),
             (6, 1, 0),
             (7, 1, 1),
             (8, 1, 2),
+            (9, 1, 3),
             (9, 0, 0),
             (10, 0, 1),
             (11, 0, 2),
+            (12, 0, 3),
         ];
         assert_eq!(path, ops);
     }
@@ -233,12 +355,15 @@ mod tests {
             (3, 0, 0),
             (4, 0, 1),
             (5, 0, 2),
+            (6, 0, 3),
             (6, 1, 0),
             (7, 1, 1),
             (8, 1, 2),
+            (9, 1, 3),
             (9, 0, 0),
             (10, 0, 1),
             (11, 0, 2),
+            (12, 0, 3),
         ];
         assert_eq!(path, ops);
         let read = b"TTTACGCCTGACGTTT";
@@ -249,14 +374,36 @@ mod tests {
             (3, 0, 0),
             (4, 0, 1),
             (5, 0, 2),
+            (6, 0, 3),
             (6, 1, 0),
             (7, 1, 1),
-            (8, 1, 1),
+            (8, 1, 2),
             (9, 1, 2),
+            (10, 1, 3),
             (10, 0, 0),
             (11, 0, 1),
             (12, 0, 2),
+            (13, 0, 3),
         ];
         assert_eq!(path, ops);
+    }
+    #[test]
+    fn string_decomposer_test_5() {
+        let read = b"AATAA";
+        let units = vec![b"A".as_slice(), b"CCG".as_slice()];
+        let decomp = DecomposedSeq::new(read, &units, &PARAM);
+        assert_eq!(decomp.score, 3);
+        eprintln!("{:?}", decomp.encoding());
+        assert_eq!(decomp.encoding().len(), 5);
+    }
+    #[test]
+    fn string_decomposer_test_6() {
+        let read = b"AACGTCGTCAAGTAAA";
+        let units = vec![b"CGT".as_slice()];
+        let decomp = DecomposedSeq::new(read, &units, &PARAM);
+        assert_eq!(decomp.score, 7);
+        assert_eq!(decomp.location(), (2, 13));
+        eprintln!("{:?}", decomp);
+        assert_eq!(decomp.encoding().len(), 3);
     }
 }
