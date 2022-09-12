@@ -131,10 +131,10 @@ fn string_decomposer<U: std::borrow::Borrow<[u8]>>(
         })
         .max_by_key(|x| x.0)
         .unwrap();
-    eprintln!("{score}");
+    // eprintln!("{score}");
     let opt_score = score;
     while !(score == 0 && u_pos == 0) {
-        eprintln!("{r_pos},{u_id},{u_pos}");
+        // eprintln!("{r_pos},{u_id},{u_pos}");
         alnpath.push((r_pos - 1, u_id, u_pos - 1));
         let u_base = units[u_id][u_pos - 1];
         let r_base = seq[r_pos - 1];
@@ -212,7 +212,51 @@ mod tests {
         assert_eq!(path, ops);
     }
     #[test]
-    fn string_decomposer_test_3() {}
+    fn string_decomposer_test_3() {
+        let read = b"TTTACGCCGACGTTT";
+        let units = vec![
+            b"A".as_slice(),
+            b"C".as_slice(),
+            b"G".as_slice(),
+            b"T".as_slice(),
+        ];
+        let (score, _ops) = string_decomposer(read, &units, &PARAM);
+        assert_eq!(score, read.len() as i64);
+    }
     #[test]
-    fn string_decomposer_test_4() {}
+    fn string_decomposer_test_4() {
+        let read = b"TTTACGCTGACGTTT";
+        let units = vec![b"ACG".as_slice(), b"CCG".as_slice()];
+        let (score, ops) = string_decomposer(read, &units, &PARAM);
+        assert_eq!(score, 7);
+        let path = vec![
+            (3, 0, 0),
+            (4, 0, 1),
+            (5, 0, 2),
+            (6, 1, 0),
+            (7, 1, 1),
+            (8, 1, 2),
+            (9, 0, 0),
+            (10, 0, 1),
+            (11, 0, 2),
+        ];
+        assert_eq!(path, ops);
+        let read = b"TTTACGCCTGACGTTT";
+        let units = vec![b"ACG".as_slice(), b"CCG".as_slice()];
+        let (score, ops) = string_decomposer(read, &units, &PARAM);
+        assert_eq!(score, 8);
+        let path = vec![
+            (3, 0, 0),
+            (4, 0, 1),
+            (5, 0, 2),
+            (6, 1, 0),
+            (7, 1, 1),
+            (8, 1, 1),
+            (9, 1, 2),
+            (10, 0, 0),
+            (11, 0, 1),
+            (12, 0, 2),
+        ];
+        assert_eq!(path, ops);
+    }
 }
