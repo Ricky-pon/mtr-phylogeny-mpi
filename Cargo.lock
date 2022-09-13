@@ -3,5 +3,12 @@
 version = 3
 
 [[package]]
+name = "eddc-heuristics"
+version = "0.1.0"
+dependencies = [
+ "string-decomposer",
+]
+
+[[package]]
 name = "string-decomposer"
 version = "0.1.0"
