@@ -37,6 +37,13 @@ pub fn pileup<E: std::borrow::Borrow<Encoding>>(encodings: &[E], unit: &[u8]) ->
     if unit.iter().any(|b| !BASES.contains(b)) {
         panic!("Please remove bases other than ACGT from the unit definition.");
     }
+    let id = encodings[0].borrow().id();
+    if encodings.iter().any(|e| e.borrow().id() != id) {
+        for enc in encodings.iter().map(|e| e.borrow()) {
+            eprintln!("{enc:?}");
+        }
+        panic!("Different units shouldn't be accepted.");
+    }
     // A,C,G,T
     let mut fractions = vec![vec![0f64; 4]; unit.len()];
     for encoding in encodings.iter().map(|e| e.borrow()) {
