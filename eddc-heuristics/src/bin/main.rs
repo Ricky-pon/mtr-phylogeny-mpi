@@ -1,9 +1,7 @@
-mod fasta;
-mod lib;
-use std::vec;
+use eddc_heuristics::fasta;
+use std::{io, vec};
 use string_decomposer;
-
-fn main() -> std::io::Result<()> {
+fn main() {
     let mut reads = vec![];
     let mut units = vec![];
 
@@ -36,5 +34,4 @@ fn main() -> std::io::Result<()> {
         }
         println!();
     }
-    Ok(())
 }
