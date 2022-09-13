@@ -12,7 +12,7 @@
 //! - Morishita-sensei's implementation
 //!
 //!
-
+pub mod pileup;
 #[derive(Debug, Clone)]
 pub struct DecomposedSeq {
     begin: usize,
