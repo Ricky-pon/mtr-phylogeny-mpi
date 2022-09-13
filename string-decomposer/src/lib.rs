@@ -282,7 +282,6 @@ fn string_decomposer<U: std::borrow::Borrow<[u8]>>(
     while 0 < u_pos {
         alnpath.push((r_pos, u_id, u_pos));
         u_pos -= 1;
-        eprintln!("{u_pos}");
     }
     alnpath.push((r_pos, u_id, u_pos));
     alnpath.reverse();
