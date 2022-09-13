@@ -3,3 +3,7 @@
 .*
 !.gitignore
 sync_to_pg.sh*
+eddc-heuristics/src/input.txt
+eddc-heuristics/src/4_EDDC.fasta
+scripts
+sync_with_cocoa.sh
