@@ -1,5 +1,4 @@
 pub mod fasta;
-
 pub struct EDDCParameters {
     match_score: Vec<Vec<f64>>,
     // Insertion to the *unit*. Should be negative.
