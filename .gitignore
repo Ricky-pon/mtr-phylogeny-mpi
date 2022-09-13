@@ -2,3 +2,4 @@
 **/*.rs.bk
 .*
 !.gitignore
+sync_to_pg.sh*
