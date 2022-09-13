@@ -246,7 +246,7 @@ fn string_decomposer<U: std::borrow::Borrow<[u8]>>(
         .unwrap();
     // eprintln!("{score}");
     let opt_score = score;
-    while !(score == 0 && u_pos == 0) {
+    while !(score == 0 && u_pos == 0) && (0 < r_pos) {
         // eprintln!("{r_pos},{u_id},{u_pos}");
         alnpath.push((r_pos, u_id, u_pos));
         let u_base = units[u_id][u_pos - 1];
@@ -279,7 +279,10 @@ fn string_decomposer<U: std::borrow::Borrow<[u8]>>(
             u_pos = next_u_pos;
         }
     }
-    assert_eq!(u_pos, 0);
+    while 0 < u_pos {
+        alnpath.push((r_pos, u_id, u_pos));
+        u_pos -= 1;
+    }
     alnpath.push((r_pos, u_id, u_pos));
     alnpath.reverse();
     (opt_score, alnpath)
@@ -289,6 +292,28 @@ fn string_decomposer<U: std::borrow::Borrow<[u8]>>(
 mod tests {
     use super::*;
     const PARAM: StringDecompParameters = StringDecompParameters::new(1, -1, -1, -1);
+    #[test]
+    fn string_decomposer_test_7() {
+        let read = b"TTCATTTC";
+        let units = vec![b"ATTTC".as_slice()];
+        let (score, ops) = string_decomposer(read, &units, &PARAM);
+        assert_eq!(score, 6);
+        let path = vec![
+            (0, 0, 0),
+            (0, 0, 1),
+            (0, 0, 2),
+            (1, 0, 3),
+            (2, 0, 4),
+            (3, 0, 5),
+            (3, 0, 0),
+            (4, 0, 1),
+            (5, 0, 2),
+            (6, 0, 3),
+            (7, 0, 4),
+            (8, 0, 5),
+        ];
+        assert_eq!(ops, path);
+    }
     #[test]
     fn string_decomposer_test() {
         let read = b"ACGACGACG";
