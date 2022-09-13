@@ -1,7 +1,7 @@
 use eddc_heuristics::fasta;
-use std::{io, vec};
+use std::vec;
 use string_decomposer;
-fn main() {
+fn main() -> std::io::Result<()> {
     let mut reads = vec![];
     let mut units = vec![];
 
@@ -27,11 +27,12 @@ fn main() {
         }
     }
 
-    let score_matrix = lib::eddc_heuristic(&encoded_reads, &units);
+    let score_matrix = eddc_heuristics::eddc_heuristic(&encoded_reads, &units);
     for v in &score_matrix {
         for &x in v {
             print!("{} ", x);
         }
         println!();
     }
+    Ok(())
 }
