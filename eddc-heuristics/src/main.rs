@@ -1,6 +1,6 @@
 mod lib;
-mod string_decomposer;
 use std::{io, vec};
+use string_decomposer;
 
 fn main() {
     let mut reads = vec![];
@@ -30,16 +30,15 @@ fn main() {
             }
         }
     }
-    // println!("{:?}", units);
 
     let mut encoded_reads = vec![vec![]; reads.len()];
 
     let reads_u8: Vec<&[u8]> = reads.iter().map(|seq| (&*seq).as_bytes()).collect();
     let units_u8: Vec<&[u8]> = units.iter().map(|seq| (&*seq).as_bytes()).collect();
-    let params = string_decomposer::lib::StringDecompParameters::new(1, -1, -1, -1);
+    let params = string_decomposer::StringDecompParameters::new(1, -1, -1, -1);
 
     for (i, &read) in reads_u8.iter().enumerate() {
-        let decomposed = string_decomposer::lib::DecomposedSeq::new(read, &units_u8, &params);
+        let decomposed = string_decomposer::DecomposedSeq::new(read, &units_u8, &params);
 
         for e in decomposed.encoding() {
             encoded_reads[i].push(e.id());
