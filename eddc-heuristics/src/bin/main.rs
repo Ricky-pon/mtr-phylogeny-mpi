@@ -15,18 +15,17 @@ fn main() -> std::io::Result<()> {
         }
     }
 
-    let mut encoded_reads = vec![vec![]; reads.len()];
-
     let params = string_decomposer::StringDecompParameters::new(1, -1, -1, -1);
-
-    for (i, &read) in reads.iter().enumerate() {
-        let decomposed = string_decomposer::DecomposedSeq::new(read, &units, &params);
-
-        for e in decomposed.encoding() {
-            encoded_reads[i].push(e.id());
-        }
-    }
-
+    let encoded_reads: Vec<Vec<_>> = reads
+        .iter()
+        .map(|read| {
+            string_decomposer::DecomposedSeq::new(read, &units, &params)
+                .encoding()
+                .iter()
+                .map(|enc| enc.id())
+                .collect()
+        })
+        .collect();
     let score_matrix = eddc_heuristics::eddc_heuristic(&encoded_reads, &units);
     for v in &score_matrix {
         for &x in v {

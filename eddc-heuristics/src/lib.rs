@@ -283,6 +283,33 @@ pub fn eddc_heuristic(sequences: &Vec<Vec<usize>>, units: &Vec<&[u8]>) -> Vec<Ve
 
     scores
 }
+/// Parallel version of the `eddc_heuristics`. The number of the thread is determined automatically.
+/// To handle the # of the threads to be used, see [here](https://docs.rs/rayon/latest/rayon/struct.ThreadPoolBuilder.html#method.build_global).
+pub fn eddc_heuristic_parallel(sequences: &Vec<Vec<usize>>, units: &Vec<&[u8]>) -> Vec<Vec<f64>> {
+    let params = set_params(sequences, units);
+    let seq_num = sequences.len();
+    let scores: Vec<_> = sequences
+        .iter()
+        .enumerate()
+        .flat_map(|(i, seq)| {
+            sequences
+                .iter()
+                .enumerate()
+                .skip(i + 1)
+                .map(|(j, seq_aligned)| {
+                    let score = alignment_dp_multiunit(i, seq, j, seq_aligned, units, &params);
+                    (i, j, score)
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    let mut score_matrix = vec![vec![0.0; seq_num]; seq_num];
+    for (i, j, score) in scores {
+        score_matrix[i][j] = score;
+        score_matrix[j][i] = score;
+    }
+    score_matrix
+}
 
 #[cfg(test)]
 mod tests {
