@@ -36,6 +36,16 @@ impl Encoding {
     pub fn ops(&self) -> &[Op] {
         &self.ops
     }
+    /// Push the unit sequence into the given buffer.
+    pub fn push_read_seq(&self, buffer: &mut Vec<u8>) {
+        for op in self.ops.iter() {
+            match *op {
+                Op::Del(_) => {}
+                Op::Ins(base) => buffer.push(base),
+                Op::Match(read, _) => buffer.push(read),
+            }
+        }
+    }
 }
 
 #[derive(Clone)]
