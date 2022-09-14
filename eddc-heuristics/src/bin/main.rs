@@ -8,7 +8,7 @@ fn main() -> std::io::Result<()> {
     let args: Vec<_> = std::env::args().collect();
     let records = fasta::parse_into_vec(&args[1])?;
     for record in records.iter() {
-        if record.id().as_bytes()[2] == '(' as u8 {
+        if record.desc().unwrap().trim().starts_with('(') {
             reads.push(record.seq());
         } else {
             units.push(record.seq());
