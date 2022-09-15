@@ -27,11 +27,18 @@ fn main() -> std::io::Result<()> {
         })
         .collect();
     let score_matrix = eddc_heuristics::eddc_heuristic_parallel(&encoded_reads, &units);
-    for v in &score_matrix {
-        for &x in v {
-            print!("{} ", x);
-        }
-        println!();
+    for (i, v) in score_matrix.iter().enumerate() {
+        let scores: Vec<_> = v
+            .iter()
+            .enumerate()
+            .map(|(j, &score)| {
+                let len = ((reads[i].len() * reads[j].len()) as f64).sqrt();
+                // Avoid zero div.
+                let normalized_score = if 0.000001 < len { score / len } else { score };
+                format!("{normalized_score}")
+            })
+            .collect();
+        println!("{}", scores.join(" "));
     }
     Ok(())
 }
