@@ -26,7 +26,7 @@ fn main() -> std::io::Result<()> {
                 .collect()
         })
         .collect();
-    let score_matrix = eddc_heuristics::eddc_heuristic(&encoded_reads, &units);
+    let score_matrix = eddc_heuristics::eddc_heuristic_parallel(&encoded_reads, &units);
     for v in &score_matrix {
         for &x in v {
             print!("{} ", x);
