@@ -24,7 +24,7 @@ fn main() -> std::io::Result<()> {
         units.push(variant);
     }
 
-    let mut encoded_reads: Vec<Vec<_>> = reads
+    let encoded_reads: Vec<Vec<_>> = reads
         .iter()
         .map(|read| {
             string_decomposer::DecomposedSeq::new(read, &units, &params)
