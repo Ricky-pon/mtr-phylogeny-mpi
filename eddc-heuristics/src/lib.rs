@@ -1,7 +1,5 @@
 use std::vec;
 
-use string_decomposer::Op;
-
 pub mod fasta;
 
 pub struct NaiveEDDCParameters {
@@ -45,7 +43,7 @@ impl EDDCParameters {
         use rayon::prelude::*;
 
         let unit_num = units.len();
-        let unit_base_num = unit_num + 5; // ATGC + empty
+        let unit_base_num = unit_num + 5; // units + ATGC + empty
 
         let mut unit_base = vec![];
         for &u in units {
@@ -83,12 +81,8 @@ impl EDDCParameters {
                 }
             }
         }
-        // for i in 0..unit_base_num {
-        //     println!("{:?}", c1[i]);
-        // }
-        // println!("{:?}", c2);
 
-        let seg_conv_score = reads
+        let seg_conv_score: Vec<Vec<Vec<Vec<f64>>>> = reads
             .par_iter()
             .map(|s| get_seg_conv_score(s, &c1, &c2))
             .collect();
@@ -318,7 +312,6 @@ fn calc_c2(
 fn get_seg_conv_score(s: &[usize], c1: &Vec<Vec<f64>>, c2: &[Vec<Vec<f64>>]) -> Vec<Vec<Vec<f64>>> {
     let n = s.len();
     let unit_num = c1.len();
-    // println!("start: {} {}\n{:?}", s.len(), c1.len(), s);
 
     let mut dp = vec![vec![vec![0.0; unit_num]; n + 1]; n + 1];
     let mut dp_sub = vec![vec![vec![vec![0.0; unit_num]; unit_num]; n + 1]; n + 1];
@@ -401,8 +394,6 @@ fn get_seg_conv_score(s: &[usize], c1: &Vec<Vec<f64>>, c2: &[Vec<Vec<f64>>]) -> 
             }
         }
     }
-    // println!("{:?}", dp);
-    // println!("end: {} {}\n{:?}", s.len(), c1.len(), s);
 
     dp
 }
@@ -419,32 +410,17 @@ fn alignment_dp_eddc(
     let m = t.len();
     let unit_num = units.len();
     let unit_base_num = unit_num + 5;
+    let eps = unit_base_num - 1;
 
     let mut dp = vec![vec![0.0; m + 1]; n + 1];
     let mut dp_sub = vec![vec![vec![0.0; unit_base_num]; m + 1]; n + 1];
 
     // initialization of dp
     for j in 1..m + 1 {
-        let mut val: Option<f64> = None;
-        for u in 0..unit_base_num {
-            let tmp_val = params.seg_conv_score(t_idx, 0, j, u);
-            val = match val {
-                Some(v) => Some(v.min(tmp_val)),
-                None => Some(tmp_val),
-            };
-        }
-        dp[0][j] = val.unwrap();
+        dp[0][j] = params.seg_conv_score(t_idx, 0, j, eps);
     }
     for i in 1..n + 1 {
-        let mut val: Option<f64> = None;
-        for u in 0..unit_base_num {
-            let tmp_val = params.seg_conv_score(s_idx, 0, i, u);
-            val = match val {
-                Some(v) => Some(v.min(tmp_val)),
-                None => Some(tmp_val),
-            };
-        }
-        dp[i][0] = val.unwrap();
+        dp[i][0] = params.seg_conv_score(s_idx, 0, i, eps);
     }
 
     // initialization of dp_sub
